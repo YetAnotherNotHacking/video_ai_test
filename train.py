@@ -2,7 +2,12 @@ import os
 import numpy as np
 import cv2
 import tensorflow as tf
-from tensorflow.keras.layers import Conv2D, LSTM, TimeDistributed, Dense, Lambda, Sequential, Reshape
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, LSTM, BatchNormalization
+from tensorflow.keras.layers import Conv2D, LSTM, TimeDistributed, Dense, Lambda, Reshape
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
+import numpy as np
+
 
 def load_images_from_folder(folder, target_size=(5, 5)):
     images = []
@@ -42,7 +47,6 @@ def create_model(input_shape, nb_frames=5, nb_filters=32, kernel_size=3, final_a
     model.add(Conv2D(nb_filters, (kernel_size, kernel_size), activation='relu', padding='same'))
     model.add(Conv2D(nb_filters, (kernel_size, kernel_size), activation='relu', padding='same'))
     model.add(Conv2D(nb_filters, (kernel_size, kernel_size), activation='relu', padding='same'))
-    model.add(Conv2D(nb_filters, (kernel_size, kernel_size), activation='relu', padding='same'))
     model.add(LSTM(256, return_sequences=True))
     model.add(TimeDistributed(Dense(input_shape[1] * input_shape[2], activation='relu')))
     model.add(Reshape(input_shape[1:]))
@@ -55,7 +59,16 @@ image_folder = 'ba_frames'
 
 # Step 2: Define the Model Architecture
 input_shape = (None, 5, 5)
-model = create_model(input_shape, nb_frames=5)
+
+
+
+model = tf.keras.Sequential([
+    tf.keras.layers.LSTM(8), # use return_sequences=True to solve the problem
+    tf.keras.layers.LSTM(8),
+    tf.keras.layers.Dense(1, activation='sigmoid')
+])
+
+
 
 # Step 3: Train the Model
 model.compile(loss='mse', optimizer='adam', metrics=['mae'])
@@ -73,7 +86,7 @@ callbacks = [
     tf.keras.callbacks.ModelCheckpoint(filepath='model.h5', monitor='val_loss', save_best_only=True, verbose=1)
 ]
 
-model.fit(x_train, y_train, validation_data=(x_test, y_train), epochs=100, batch_size=16, callbacks=callbacks)
+model.fit(x_train, y_train, validation_data=(x_test, y_train), epochs=10, batch_size=16, callbacks=callbacks)
 
 # Step 4: Generate Videos
 
@@ -83,5 +96,5 @@ for i in range(100):
     pred = model.predict(x_pred)
     generated_frames.append(pred.reshape(input_shape[1:]))
 
-generate_images(generated_frames, 'generated_images')
+generate_images(generated_frames, 'ba_frames')
 generate_video(generated_frames, 'generated_video.mp4')
